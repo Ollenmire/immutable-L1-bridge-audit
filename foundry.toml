@@ -10,4 +10,12 @@ remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/"
 ]
 
+# --------------------------------------------------
+# CI profile – used automatically in GitHub Actions
+# (FOUNDRY_PROFILE is set to `ci` in the workflow)
+# --------------------------------------------------
+[profile.ci]
+# Skip the regression test that is expected to fail on the vulnerable contract
+skip = ["test/QueueBombVulnerable.t.sol"]
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
