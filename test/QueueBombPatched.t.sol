@@ -40,10 +40,7 @@ contract ImxTokenMock is ERC20 {
 contract MockBridgeAdaptor is IRootBridgeAdaptor {
     event Sent(bytes payload, address sender, uint256 value);
 
-    function sendMessage(
-        bytes calldata payload,
-        address refundRecipient
-    ) external payable override {
+    function sendMessage(bytes calldata payload, address refundRecipient) external payable override {
         emit Sent(payload, refundRecipient, msg.value);
     }
 
@@ -85,14 +82,13 @@ contract QueueBombPatchedTest is Test {
 
         bridge = new RootERC20BridgeFlowRatePatched(initializer);
 
-        IRootERC20Bridge.InitializationRoles memory roles = IRootERC20Bridge
-            .InitializationRoles({
-                defaultAdmin: address(this),
-                pauser: address(this),
-                unpauser: address(this),
-                variableManager: address(this),
-                adaptorManager: address(this)
-            });
+        IRootERC20Bridge.InitializationRoles memory roles = IRootERC20Bridge.InitializationRoles({
+            defaultAdmin: address(this),
+            pauser: address(this),
+            unpauser: address(this),
+            variableManager: address(this),
+            adaptorManager: address(this)
+        });
 
         bridge.initialize(
             roles,
@@ -118,21 +114,10 @@ contract QueueBombPatchedTest is Test {
     // Helper to enqueue many withdrawals
     // ---------------------------------------------------------------------
 
-    function _stuffQueue(
-        address forReceiver,
-        address token,
-        uint256 count,
-        uint256 amount
-    ) internal {
+    function _stuffQueue(address forReceiver, address token, uint256 count, uint256 amount) internal {
         bytes32 withdrawSig = bridge.WITHDRAW_SIG();
         for (uint256 i = 0; i < count; i++) {
-            bytes memory payload = abi.encode(
-                withdrawSig,
-                token,
-                address(this),
-                forReceiver,
-                amount
-            );
+            bytes memory payload = abi.encode(withdrawSig, token, address(this), forReceiver, amount);
             vm.prank(address(rootBridgeAdaptor));
             bridge.onMessageReceive(payload);
         }
@@ -154,21 +139,13 @@ contract QueueBombPatchedTest is Test {
             idx[i] = i;
         }
 
-        console.log(
-            "Calling finaliseQueuedWithdrawalsAggregatedLimited expecting revert"
-        );
+        console.log("Calling finaliseQueuedWithdrawalsAggregatedLimited expecting revert");
         vm.expectRevert(
             abi.encodeWithSelector(
-                RootERC20BridgeFlowRatePatched.TooManyIndices.selector,
-                big,
-                bridge.MAX_AGGREGATED_WITHDRAWALS()
+                RootERC20BridgeFlowRatePatched.TooManyIndices.selector, big, bridge.MAX_AGGREGATED_WITHDRAWALS()
             )
         );
-        bridge.finaliseQueuedWithdrawalsAggregatedLimited(
-            receiver,
-            address(legit),
-            idx
-        );
+        bridge.finaliseQueuedWithdrawalsAggregatedLimited(receiver, address(legit), idx);
         console.log("Revert asserted - test passed\n");
     }
 
@@ -185,11 +162,7 @@ contract QueueBombPatchedTest is Test {
         }
 
         console.log("Aggregating within limit - expecting success");
-        bridge.finaliseQueuedWithdrawalsAggregatedLimited(
-            receiver,
-            address(legit),
-            idx
-        );
+        bridge.finaliseQueuedWithdrawalsAggregatedLimited(receiver, address(legit), idx);
         console.log("Aggregation succeeded\n");
     }
 
@@ -200,51 +173,29 @@ contract QueueBombPatchedTest is Test {
     function testScanRangeTooLargeReverts() public {
         console.log("[PATCHED] testScanRangeTooLargeReverts start");
         uint256 excessive = bridge.MAX_SCAN_RANGE() + 1;
-        console.log(
-            "Stuffing victim queue with",
-            excessive,
-            "attacker withdrawals"
-        );
+        console.log("Stuffing victim queue with", excessive, "attacker withdrawals");
         _stuffQueue(victim, address(attackerToken), excessive, 1 wei);
         vm.warp(block.timestamp + 2 days);
 
         console.log("Calling findPendingWithdrawalsLimited expecting revert");
         vm.expectRevert(
             abi.encodeWithSelector(
-                RootERC20BridgeFlowRatePatched.ScanRangeTooLarge.selector,
-                excessive,
-                bridge.MAX_SCAN_RANGE()
+                RootERC20BridgeFlowRatePatched.ScanRangeTooLarge.selector, excessive, bridge.MAX_SCAN_RANGE()
             )
         );
-        bridge.findPendingWithdrawalsLimited(
-            victim,
-            address(attackerToken),
-            0,
-            excessive,
-            10
-        );
+        bridge.findPendingWithdrawalsLimited(victim, address(attackerToken), 0, excessive, 10);
         console.log("Revert asserted - test passed\n");
     }
 
     function testScanWithinLimitSucceeds() public {
         console.log("[PATCHED] testScanWithinLimitSucceeds start");
         uint256 limit = bridge.MAX_SCAN_RANGE();
-        console.log(
-            "Stuffing victim queue with",
-            limit,
-            "attacker withdrawals"
-        );
+        console.log("Stuffing victim queue with", limit, "attacker withdrawals");
         _stuffQueue(victim, address(attackerToken), limit, 1 wei);
         vm.warp(block.timestamp + 2 days);
 
         console.log("Scanning within limit - expecting success");
-        bridge.findPendingWithdrawalsLimited(
-            victim,
-            address(attackerToken),
-            0,
-            limit,
-            10
-        );
+        bridge.findPendingWithdrawalsLimited(victim, address(attackerToken), 0, limit, 10);
         console.log("Scan succeeded\n");
     }
 
@@ -256,16 +207,15 @@ contract QueueBombPatchedTest is Test {
         console.log("[PATCHED] testHugeAggregationGuardReverts start");
         uint256 big = 45_000;
         uint256[] memory idx = new uint256[](big);
-        for (uint256 i = 0; i < big; i++) idx[i] = i;
+        for (uint256 i = 0; i < big; i++) {
+            idx[i] = i;
+        }
 
         bytes memory callData = abi.encodeWithSelector(
-            bridge.finaliseQueuedWithdrawalsAggregatedLimited.selector,
-            receiver,
-            address(legit),
-            idx
+            bridge.finaliseQueuedWithdrawalsAggregatedLimited.selector, receiver, address(legit), idx
         );
 
-        (bool ok, ) = address(bridge).call{gas: 25_000_000}(callData);
+        (bool ok,) = address(bridge).call{gas: 25_000_000}(callData);
         console.log("Low-level call returned", ok);
         require(!ok, "Call unexpectedly succeeded");
         console.log("Call reverted as expected (guard hit)\n");
@@ -275,14 +225,9 @@ contract QueueBombPatchedTest is Test {
         console.log("[PATCHED] testHugeScanGuardReverts start");
         uint256 big = 45_000;
         bytes memory callData = abi.encodeWithSelector(
-            bridge.findPendingWithdrawalsLimited.selector,
-            victim,
-            address(attackerToken),
-            0,
-            big,
-            10
+            bridge.findPendingWithdrawalsLimited.selector, victim, address(attackerToken), 0, big, 10
         );
-        (bool ok, ) = address(bridge).call{gas: 25_000_000}(callData);
+        (bool ok,) = address(bridge).call{gas: 25_000_000}(callData);
         console.log("Low-level scan call returned", ok);
         require(!ok, "Scan unexpectedly succeeded");
         console.log("Scan reverted as expected (guard hit)\n");

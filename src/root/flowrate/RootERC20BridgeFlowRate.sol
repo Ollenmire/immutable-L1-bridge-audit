@@ -6,7 +6,10 @@ import "./FlowRateDetection.sol";
 import "./FlowRateWithdrawalQueue.sol";
 import "../RootERC20Bridge.sol";
 
-import {IRootERC20BridgeFlowRateEvents, IRootERC20BridgeFlowRateErrors} from "../../interfaces/root/flowrate/IRootERC20BridgeFlowRate.sol";
+import {
+    IRootERC20BridgeFlowRateEvents,
+    IRootERC20BridgeFlowRateErrors
+} from "../../interfaces/root/flowrate/IRootERC20BridgeFlowRate.sol";
 
 /**
  * @title  Root ERC 20 Bridge Flow Rate
@@ -77,9 +80,7 @@ contract RootERC20BridgeFlowRate is
     // Map ERC 20 token address to threshold
     mapping(address => uint256) public largeTransferThresholds;
 
-    constructor(
-        address _initializerAddress
-    ) RootERC20Bridge(_initializerAddress) {}
+    constructor(address _initializerAddress) RootERC20Bridge(_initializerAddress) {}
 
     function initialize(
         InitializationRoles memory newRoles,
@@ -110,15 +111,11 @@ contract RootERC20BridgeFlowRate is
     }
 
     // Ensure initialize from RootERC20Bridge can not be called.
-    function initialize(
-        InitializationRoles memory,
-        address,
-        address,
-        address,
-        address,
-        address,
-        uint256
-    ) external pure override {
+    function initialize(InitializationRoles memory, address, address, address, address, address, uint256)
+        external
+        pure
+        override
+    {
         revert WrongInitializer();
     }
 
@@ -156,9 +153,7 @@ contract RootERC20BridgeFlowRate is
      *       all be finalised, and then the withdrawal delay could be set to the desired
      *       value.
      */
-    function setWithdrawalDelay(
-        uint256 delay
-    ) external onlyRole(RATE_CONTROL_ROLE) {
+    function setWithdrawalDelay(uint256 delay) external onlyRole(RATE_CONTROL_ROLE) {
         _setWithdrawalDelay(delay);
     }
 
@@ -229,36 +224,23 @@ contract RootERC20BridgeFlowRate is
      *      Only when not paused.
      */
     function _withdraw(bytes memory data) internal override {
-        (
-            address rootToken,
-            address childToken,
-            address withdrawer,
-            address receiver,
-            uint256 amount
-        ) = _decodeAndValidateWithdrawal(data);
+        (address rootToken, address childToken, address withdrawer, address receiver, uint256 amount) =
+            _decodeAndValidateWithdrawal(data);
 
         // Update the flow rate checking. Delay the withdrawal if the request was
         // for a token that has not been configured.
-        bool delayWithdrawalUnknownToken = _updateFlowRateBucket(
-            rootToken,
-            amount
-        );
+        bool delayWithdrawalUnknownToken = _updateFlowRateBucket(rootToken, amount);
         bool delayWithdrawalLargeAmount = false;
 
         // Delay the withdrawal if the amount is greater than the threshold.
         if (!delayWithdrawalUnknownToken) {
-            delayWithdrawalLargeAmount = (amount >=
-                largeTransferThresholds[rootToken]);
+            delayWithdrawalLargeAmount = (amount >= largeTransferThresholds[rootToken]);
         }
 
         // Ensure storage variable is cached on the stack.
         bool queueActivated = withdrawalQueueActivated;
 
-        if (
-            delayWithdrawalLargeAmount ||
-            delayWithdrawalUnknownToken ||
-            queueActivated
-        ) {
+        if (delayWithdrawalLargeAmount || delayWithdrawalUnknownToken || queueActivated) {
             _enqueueWithdrawal(receiver, withdrawer, rootToken, amount);
             emit QueuedWithdrawal(
                 rootToken,
@@ -270,13 +252,7 @@ contract RootERC20BridgeFlowRate is
                 queueActivated
             );
         } else {
-            _executeTransfer(
-                rootToken,
-                childToken,
-                withdrawer,
-                receiver,
-                amount
-            );
+            _executeTransfer(rootToken, childToken, withdrawer, receiver, amount);
         }
     }
 
@@ -286,15 +262,8 @@ contract RootERC20BridgeFlowRate is
      * @param index Offset into array of queued withdrawals.
      * @dev Only when not paused.
      */
-    function finaliseQueuedWithdrawal(
-        address receiver,
-        uint256 index
-    ) external nonReentrant {
-        (
-            address withdrawer,
-            address token,
-            uint256 amount
-        ) = _processWithdrawal(receiver, index);
+    function finaliseQueuedWithdrawal(address receiver, uint256 index) external nonReentrant {
+        (address withdrawer, address token, uint256 amount) = _processWithdrawal(receiver, index);
         address childToken = rootTokenToChildToken[token];
         _executeTransfer(token, childToken, withdrawer, receiver, amount);
     }
@@ -308,11 +277,11 @@ contract RootERC20BridgeFlowRate is
      *   Note that withdrawer in the ERC20Withdraw event emitted in the _executeTransfer function
      *   will represent the withdrawer of the last bridge transfer.
      */
-    function finaliseQueuedWithdrawalsAggregated(
-        address receiver,
-        address token,
-        uint256[] calldata indices
-    ) external virtual nonReentrant {
+    function finaliseQueuedWithdrawalsAggregated(address receiver, address token, uint256[] calldata indices)
+        external
+        virtual
+        nonReentrant
+    {
         if (indices.length == 0) {
             revert ProvideAtLeastOneIndex();
         }
@@ -321,10 +290,7 @@ contract RootERC20BridgeFlowRate is
         for (uint256 i = 0; i < indices.length; i++) {
             address actualToken;
             uint256 amount;
-            (withdrawer, actualToken, amount) = _processWithdrawal(
-                receiver,
-                indices[i]
-            );
+            (withdrawer, actualToken, amount) = _processWithdrawal(receiver, indices[i]);
             if (actualToken != token) {
                 revert MixedTokens(token, actualToken);
             }

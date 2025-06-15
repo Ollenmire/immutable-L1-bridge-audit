@@ -36,9 +36,7 @@ contract RootERC20BridgeFlowRatePatched is RootERC20BridgeFlowRate {
     // Constructor
     // ---------------------------------------------------------------------
 
-    constructor(
-        address initializerAddress
-    ) RootERC20BridgeFlowRate(initializerAddress) {}
+    constructor(address initializerAddress) RootERC20BridgeFlowRate(initializerAddress) {}
 
     // ---------------------------------------------------------------------
     // Overridden functions with guards
@@ -49,11 +47,10 @@ contract RootERC20BridgeFlowRatePatched is RootERC20BridgeFlowRate {
     /// @param receiver The user receiving funds.
     /// @param token    The token to withdraw.
     /// @param indices  Indices into the caller's withdrawal queue to aggregate.
-    function finaliseQueuedWithdrawalsAggregatedLimited(
-        address receiver,
-        address token,
-        uint256[] calldata indices
-    ) public nonReentrant {
+    function finaliseQueuedWithdrawalsAggregatedLimited(address receiver, address token, uint256[] calldata indices)
+        public
+        nonReentrant
+    {
         if (indices.length == 0) {
             revert ProvideAtLeastOneIndex();
         }
@@ -67,10 +64,7 @@ contract RootERC20BridgeFlowRatePatched is RootERC20BridgeFlowRate {
         for (uint256 i = 0; i < indices.length; i++) {
             address actualToken;
             uint256 amount;
-            (withdrawer, actualToken, amount) = _processWithdrawal(
-                receiver,
-                indices[i]
-            );
+            (withdrawer, actualToken, amount) = _processWithdrawal(receiver, indices[i]);
 
             if (actualToken != token) {
                 revert MixedTokens(token, actualToken);
@@ -100,12 +94,6 @@ contract RootERC20BridgeFlowRatePatched is RootERC20BridgeFlowRate {
         }
 
         // Call the original unbounded implementation once bounds are satisfied.
-        found = this.findPendingWithdrawals(
-            receiver,
-            token,
-            startIndex,
-            stopIndex,
-            maxFind
-        );
+        found = this.findPendingWithdrawals(receiver, token, startIndex, stopIndex, maxFind);
     }
 }

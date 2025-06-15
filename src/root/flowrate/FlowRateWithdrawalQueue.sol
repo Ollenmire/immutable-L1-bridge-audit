@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache 2.0
 pragma solidity 0.8.19;
 
-import {IFlowRateWithdrawalQueueEvents, IFlowRateWithdrawalQueueErrors} from "../../interfaces/root/flowrate/IFlowRateWithdrawalQueue.sol";
+import {
+    IFlowRateWithdrawalQueueEvents,
+    IFlowRateWithdrawalQueueErrors
+} from "../../interfaces/root/flowrate/IFlowRateWithdrawalQueue.sol";
 
 /**
  * @title  Flow Rate Withdrawal Queue
@@ -16,10 +19,7 @@ import {IFlowRateWithdrawalQueueEvents, IFlowRateWithdrawalQueueErrors} from "..
  *         to make it easier to understand the functionality.
  *         Note that this contract is upgradeable.
  */
-abstract contract FlowRateWithdrawalQueue is
-    IFlowRateWithdrawalQueueEvents,
-    IFlowRateWithdrawalQueueErrors
-{
+abstract contract FlowRateWithdrawalQueue is IFlowRateWithdrawalQueueEvents, IFlowRateWithdrawalQueueErrors {
     // One day in seconds.
     uint256 private constant DEFAULT_WITHDRAW_DELAY = 1 days;
 
@@ -81,34 +81,17 @@ abstract contract FlowRateWithdrawalQueue is
      * @param token The token to withdraw.
      * @param amount The amount to withdraw.
      */
-    function _enqueueWithdrawal(
-        address receiver,
-        address withdrawer,
-        address token,
-        uint256 amount
-    ) internal {
+    function _enqueueWithdrawal(address receiver, address withdrawer, address token, uint256 amount) internal {
         // @TODO look at using a mapping instead of an array to make the withdraw function simpler
         if (token == address(0)) {
             revert TokenIsZero(receiver);
         }
         // solhint-disable-next-line not-rely-on-time
-        PendingWithdrawal memory newPendingWithdrawal = PendingWithdrawal(
-            withdrawer,
-            token,
-            amount,
-            block.timestamp
-        );
+        PendingWithdrawal memory newPendingWithdrawal = PendingWithdrawal(withdrawer, token, amount, block.timestamp);
         uint256 index = pendingWithdrawals[receiver].length;
         pendingWithdrawals[receiver].push(newPendingWithdrawal);
         // solhint-disable-next-line not-rely-on-time
-        emit EnQueuedWithdrawal(
-            token,
-            withdrawer,
-            receiver,
-            amount,
-            block.timestamp,
-            index
-        );
+        emit EnQueuedWithdrawal(token, withdrawer, receiver, amount, block.timestamp, index);
     }
 
     /**
@@ -118,10 +101,10 @@ abstract contract FlowRateWithdrawalQueue is
      * @return token The token to transfer to the receiver.
      * @return amount The number of tokens to transfer to the receiver.
      */
-    function _processWithdrawal(
-        address receiver,
-        uint256 index
-    ) internal returns (address withdrawer, address token, uint256 amount) {
+    function _processWithdrawal(address receiver, uint256 index)
+        internal
+        returns (address withdrawer, address token, uint256 amount)
+    {
         PendingWithdrawal[] storage withdrawals = pendingWithdrawals[receiver];
         // Check if the request is beyond the end of the array.
         uint256 length = pendingWithdrawals[receiver].length;
@@ -150,14 +133,7 @@ abstract contract FlowRateWithdrawalQueue is
         // Zeroize the old queue item to save some gas.
         delete withdrawals[index];
 
-        emit ProcessedWithdrawal(
-            token,
-            withdrawer,
-            receiver,
-            amount,
-            block.timestamp,
-            index
-        );
+        emit ProcessedWithdrawal(token, withdrawer, receiver, amount, block.timestamp, index);
     }
 
     /**
@@ -165,9 +141,7 @@ abstract contract FlowRateWithdrawalQueue is
      * @param receiver The account to fetch the queue for.
      * @return length Length of array of pending withdrawals array.
      */
-    function getPendingWithdrawalsLength(
-        address receiver
-    ) external view returns (uint256 length) {
+    function getPendingWithdrawalsLength(address receiver) external view returns (uint256 length) {
         length = pendingWithdrawals[receiver].length;
     }
 
@@ -177,10 +151,11 @@ abstract contract FlowRateWithdrawalQueue is
      * @param indices Offsets into withdrawal queue to fetch information for.
      * @return pending Array of pending withdrawals. Zero fill are returned if the index is beyond the end of the queue.
      */
-    function getPendingWithdrawals(
-        address receiver,
-        uint256[] calldata indices
-    ) external view returns (PendingWithdrawal[] memory pending) {
+    function getPendingWithdrawals(address receiver, uint256[] calldata indices)
+        external
+        view
+        returns (PendingWithdrawal[] memory pending)
+    {
         PendingWithdrawal[] storage withdrawals = pendingWithdrawals[receiver];
         uint256 withdrawalsLength = withdrawals.length;
         pending = new PendingWithdrawal[](indices.length);
@@ -212,24 +187,16 @@ abstract contract FlowRateWithdrawalQueue is
         PendingWithdrawal[] storage withdrawals = pendingWithdrawals[receiver];
         found = new FindPendingWithdrawal[](maxFind);
         uint256 foundIndex = 0;
-        uint256 stop = stopIndex > withdrawals.length
-            ? withdrawals.length
-            : stopIndex;
+        uint256 stop = stopIndex > withdrawals.length ? withdrawals.length : stopIndex;
         for (uint256 i = startIndex; i < stop && foundIndex < maxFind; i++) {
             if (withdrawals[i].token == token) {
-                found[foundIndex] = FindPendingWithdrawal(
-                    i,
-                    withdrawals[i].amount,
-                    withdrawals[i].timestamp
-                );
+                found[foundIndex] = FindPendingWithdrawal(i, withdrawals[i].amount, withdrawals[i].timestamp);
                 foundIndex++;
             }
         }
 
         if (foundIndex != maxFind) {
-            FindPendingWithdrawal[] memory temp = new FindPendingWithdrawal[](
-                foundIndex
-            );
+            FindPendingWithdrawal[] memory temp = new FindPendingWithdrawal[](foundIndex);
             for (uint256 i = 0; i < foundIndex; i++) {
                 temp[i] = found[i];
             }
