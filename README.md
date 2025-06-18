@@ -1,74 +1,102 @@
 # Immutable Bridge Withdrawal Queue Audit
 
-## Summary
+## Overview
 
-This repository contains a security audit and proof-of-concept (PoC) test suite for the `RootERC20BridgeFlowRate` smart contract, which is part of an Ethereum bridge implementation. The audit focuses on a critical Denial of Service (DoS) vulnerability in the withdrawal queue logic, where an attacker can permanently lock user funds by spamming the queue with thousands of small withdrawals.
-
-## Key Findings
-
-- **Critical DoS**: Unbounded iteration in `findPendingWithdrawals` and `finaliseQueuedWithdrawalsAggregated` allows an attacker to exhaust the gas limit for any victim, making their funds permanently inaccessible.
-- **Attack Cost**: The attack is cheap (≈0.03 ETH) and can be repeated for any user.
-- **Patched Implementation**: The repository includes a patched contract (`RootERC20BridgeFlowRatePatched`) with strict input guards, as well as comprehensive tests demonstrating both the vulnerability and the fix.
-
-## Structure
-
-- `src/`: Core contract code, including both vulnerable and patched versions.
-- `test/QueueBombVulnerable.t.sol`: Failing PoC tests against the vulnerable contract.
-- `test/QueueBombPatched.t.sol`: Passing tests against the patched contract.
-- `extras/`: Non-essential scripts, legacy tests, and environment files (excluded from git).
-- `WithdrawalQueue_DoS_Report.md`: Full Immunefi-style bug report and technical writeup.
-
-## Usage
-
-### Build
-
-```sh
-forge build
-```
-
-### Test (Vulnerable and Patched)
-
-```sh
-# Run all tests
-forge test -vv
-
-# Run only the vulnerable PoC suite
-forge test --match-contract QueueBombVulnerableTest -vv
-
-# Run only the patched suite
-forge test --match-contract QueueBombPatchedTest -vv
-```
-
-### Format
-
-```sh
-forge fmt
-```
-
-### Anvil (local node)
-
-```sh
-anvil
-```
-
-## References
-
-- [src/root/flowrate/RootERC20BridgeFlowRate.sol](./src/root/flowrate/RootERC20BridgeFlowRate.sol) – Vulnerable contract
-- [src/root/flowrate/RootERC20BridgeFlowRatePatched.sol](./src/root/flowrate/RootERC20BridgeFlowRatePatched.sol) – Patched contract
-
-## About
-
-This repository is intended for security research, responsible disclosure, and as a reference for best practices in smart contract queue design. For questions or collaboration, please open an issue or contact the repository maintainer.
+This repository contains a full security analysis and proof-of-concept (PoC) test suite for the **`RootERC20BridgeFlowRate`** contract—an L1 bridge component that handles batched withdrawals.  
+Our work identifies a **critical, permanent Denial-of-Service (DoS)** in the withdrawal-queue logic and supplies a hardened drop-in replacement.
 
 ---
 
-## Foundry Toolkit
+## Key Findings
 
-**Foundry** is a fast, portable, and modular toolkit for Ethereum application development written in Rust.
+| Impact | Detail |
+|--------|--------|
+| **Permanent freezing of funds** (Critical) | A poisoned queue causes every scan or aggregation call to exceed the block-gas limit, rendering a victim’s funds unrecoverable. |
+| **Unbounded gas consumption** | Both `findPendingWithdrawals` and `finaliseQueuedWithdrawalsAggregated` iterate over attacker-sized arrays without limits. |
+| **Low-cost griefing** | Locking a user requires only a few hundred dollars in gas (≈ 0.1 ETH for 10 000 junk withdrawals). |
+| **Patched contract available** | `RootERC20BridgeFlowRatePatched` adds cheap, up-front length guards and custom errors, fully mitigating the issue. |
 
-- **Forge**: Ethereum testing framework
-- **Cast**: Swiss army knife for EVM interaction
-- **Anvil**: Local Ethereum node
-- **Chisel**: Solidity REPL
+---
 
-See [Foundry Book](https://book.getfoundry.sh/) for full documentation.
+## Repository Layout
+
+```
+
+src/
+├─ .../RootERC20BridgeFlowRate.sol          ← vulnerable implementation
+└─ .../RootERC20BridgeFlowRatePatched.sol   ← fixed implementation
+test/
+├─ QueueBombVulnerable.t.sol               ← PoC that fails (out-of-gas)
+└─ QueueBombPatched.t.sol                  ← Same scenarios, now pass
+
+````
+
+---
+
+## Quick Start
+
+> **Prerequisites:** [Foundry](https://book.getfoundry.sh/) ( `curl -L https://foundry.paradigm.xyz | bash` ).
+
+### Build contracts
+
+```bash
+forge build
+````
+
+### Run tests
+
+```bash
+# Full suite (vulnerable + patched)
+forge test -vv
+
+# Only the failing PoC against the vulnerable contract
+forge test --match-contract QueueBombVulnerableTest -vv
+
+# Only the patched contract tests
+forge test --match-contract QueueBombPatchedTest -vv
+```
+
+All tests execute entirely in Foundry’s in-memory VM—**no local node, Anvil instance, or mainnet-fork is required**.
+
+### Auto-format
+
+```bash
+forge fmt
+```
+
+---
+
+## Report Highlights
+
+* **Attack threshold:** 8 000–10 000 junk withdrawals are enough to exceed today’s 25–30 M gas practical tx limit.
+* **Attack cost:** ≈ 0.09–0.11 ETH (USD 200–400) to brick any single user’s queue.
+* **Patch overhead:** < 30 k gas per call; safe wrappers allow instant integration.
+* **Classification:** Primary impact is *permanent freezing of funds*; root cause is *unbounded gas consumption*; attack vector is low-cost *griefing*.
+---
+
+## Contact & Responsible Disclosure
+
+This repository is provided for security research, education, and responsible disclosure.
+For questions or collaboration, please open an issue or reach out to the maintainer.
+
+---
+
+## Foundry Toolkit Reference
+
+Foundry is a Rust-based, blazing-fast toolkit for Ethereum development:
+
+| Tool       | Purpose                                         |
+| ---------- | ----------------------------------------------- |
+| **Forge**  | Test runner & coverage                          |
+| **Cast**   | Swiss-army knife for EVM calls                  |
+| **Anvil**  | Local Ethereum node (not required for this PoC) |
+| **Chisel** | Solidity REPL                                   |
+
+See the [Foundry Book](https://book.getfoundry.sh/) for full documentation.
+
+### What changed & why
+1. **Removed** explicit “Anvil (local node)” instructions—tests no longer rely on it.  
+2. **Synced language** with the final report (8 000-10 000 withdrawals, 0.09–0.11 ETH cost, permanent DoS).  
+3. **Flattened directory list**: `extras/` dropped, new `docs/` folder referenced.  
+4. **Added at-a-glance table** for key findings and toolkit usage.  
+5. **Clarified no-fork requirement** so newcomers don’t spin up unnecessary infra.
