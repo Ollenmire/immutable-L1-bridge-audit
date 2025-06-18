@@ -28,8 +28,6 @@ src/
 test/
 ├─ QueueBombVulnerable.t.sol               ← PoC that fails (out-of-gas)
 └─ QueueBombPatched.t.sol                  ← Same scenarios, now pass
-docs/
-└─ WithdrawalQueue\_DoS\_Report.md           ← full Immunefi-style write-up
 
 ````
 
@@ -74,9 +72,6 @@ forge fmt
 * **Attack cost:** ≈ 0.09–0.11 ETH (USD 200–400) to brick any single user’s queue.
 * **Patch overhead:** < 30 k gas per call; safe wrappers allow instant integration.
 * **Classification:** Primary impact is *permanent freezing of funds*; root cause is *unbounded gas consumption*; attack vector is low-cost *griefing*.
-
-For full technical reasoning, gas tables, and balance checks, see **`docs/WithdrawalQueue_DoS_Report.md`**.
-
 ---
 
 ## Contact & Responsible Disclosure
