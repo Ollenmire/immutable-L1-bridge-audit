@@ -105,6 +105,3 @@ See the [Foundry Book](https://book.getfoundry.sh/) for full documentation.
 3. **Flattened directory list**: `extras/` dropped, new `docs/` folder referenced.  
 4. **Added at-a-glance table** for key findings and toolkit usage.  
 5. **Clarified no-fork requirement** so newcomers don’t spin up unnecessary infra.
-
-Feel free to adjust author/contact details or tweak wording, but this version now mirrors the polished Immunefi report.
-```
